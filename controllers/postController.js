@@ -3,31 +3,34 @@ const { ObjectId } = require('mongodb');
 
 // 🆕 Tạo post
 const createPost = async (req, res) => {
-  const { title, content, img_url_list } = req.body;
+  const { title, sections } = req.body;
   const user = req.user;
-  if (!title || !content) {
-    return res.status(400).json({ message: 'Title and content are required' });
+
+  if (!title || !Array.isArray(sections) || sections.length === 0) {
+    return res.status(400).json({ message: 'Title and sections are required' });
   }
 
   try {
     const posts = await getPostCollection();
+
     const newPost = {
       title,
-      content,
-      img_url_list: img_url_list || [],
       author: {
         id: user.id,
         username: user.username,
       },
       createdAt: new Date(),
+      sections,
     };
 
     const result = await posts.insertOne(newPost);
-    res.status(201).json({ message: 'Post created', postId: result.insertedId });
+    res.status(201).json({ message: 'Post created successfully', postId: result.insertedId });
   } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
+
 
 // 📥 Lấy tất cả post
 const getAllPosts = async (req, res) => {
@@ -52,24 +55,32 @@ const getPostById = async (req, res) => {
   }
 };
 
-// ✏️ Cập nhật post
+// ✏️ Cập nhật post (sử dụng cấu trúc sections)
 const updatePost = async (req, res) => {
-  const { title, content, img_url_list } = req.body;
+  const { title, sections } = req.body;
 
   try {
     const posts = await getPostCollection();
     const post = await posts.findOne({ _id: new ObjectId(req.params.id) });
-    if (!post) return res.status(404).json({ message: 'Post not found' });
+
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
 
     const updated = {
       ...(title && { title }),
-      ...(content && { content }),
-      ...(img_url_list && { img_url_list }),
+      ...(sections && Array.isArray(sections) && { sections }),
+      updatedAt: new Date(), // nếu muốn theo dõi thời gian chỉnh sửa
     };
 
-    await posts.updateOne({ _id: new ObjectId(req.params.id) }, { $set: updated });
-    res.json({ message: 'Post updated' });
+    await posts.updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: updated }
+    );
+
+    res.json({ message: 'Post updated successfully' });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Server error' });
   }
 };
