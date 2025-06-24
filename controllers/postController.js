@@ -58,10 +58,14 @@ const getPostById = async (req, res) => {
 // ✏️ Cập nhật post (sử dụng cấu trúc sections)
 const updatePost = async (req, res) => {
   const { title, sections } = req.body;
-
+   const user = req.user;
+   if(!user){return res.status(402).json({ message: 'not authenticated' });}
   try {
     const posts = await getPostCollection();
-    const post = await posts.findOne({ _id: new ObjectId(req.params.id) });
+      const post = await posts.findOne({ 
+    _id: new ObjectId(req.params.id),
+    "author.id": user.id 
+  });
 
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
